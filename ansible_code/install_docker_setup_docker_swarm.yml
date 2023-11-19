@@ -1,0 +1,85 @@
+---
+- name: Initialize Docker Swarm
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Check if Docker is installed
+      stat:
+        path: /usr/bin/docker
+      register: docker_installed
+
+    - name: Install Docker if not already installed
+      block:
+        - name: Install Docker Dependencies
+          apt:
+            name:
+              - apt-transport-https
+              - ca-certificates
+              - curl
+              - software-properties-common
+            state: present
+
+        - name: Add Docker GPG key
+          apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
+
+        - name: Add Docker repository
+          apt_repository:
+            repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable
+            state: present
+
+        - name: Update apt package cache
+          apt:
+            update_cache: yes
+
+        - name: Install Docker
+          apt:
+            name: docker-ce
+            state: present
+      when: not docker_installed.stat.exists
+- name: Join Docker Swarm as a Manager
+  hosts: swarm_manager
+  become: true
+  gather_facts: true
+  tasks:
+
+    - name: Initialize Docker Swarm
+      command: "docker swarm init --advertise-addr {{ ansible_host }}"
+      register: swarm_init_result
+      ignore_errors: true
+
+    - name: Display Swarm Initialization Result
+      debug:
+        var: swarm_init_result
+      when: swarm_init_result.rc == 0
+
+    - name: Store Docker Swarm Token locally on the manager
+      local_action:
+        module: copy
+        content: "{{ swarm_init_result.stdout_lines | join('\n') }}"
+        dest: ./swarm_token.txt
+      when: swarm_init_result.rc == 0
+
+    - name: Set read permissions for everyone on the swarm_token.txt file
+      local_action:
+        module: command
+        cmd: "chmod 777 ./swarm_token.txt"
+      when: swarm_init_result.rc == 0
+
+    - name: Fetch Swarm Token from the manager to Ansible controller
+      fetch:
+        src: ./swarm_token.txt
+        dest: ./swarm_token.txt
+        flat: yes
+
+- name: Join Docker Swarm as a Worker
+  hosts: swarm_workers
+  become: true
+  gather_facts: true
+  tasks:
+
+    - name: Join Docker Swarm
+      command: "sudo {{ lookup('file', 'swarm_token.txt').split('\n')[4] }} "
+      ignore_errors: true
