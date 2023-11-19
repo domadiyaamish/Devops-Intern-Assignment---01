@@ -1,0 +1,39 @@
+[swarm_manager]
+13.233.162.247 ansible_ssh_private_key_file=/home/ubuntu/poojali.pem
+
+[swarm_workers]
+13.126.123.187 ansible_ssh_private_key_file=/home/ubuntu/poojali.pem
+13.126.123.187 ansible_ssh_private_key_file=/home/ubuntu/poojali.pem
+
+[swarm_nodes:children]
+swarm_manager
+swarm_workers
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
