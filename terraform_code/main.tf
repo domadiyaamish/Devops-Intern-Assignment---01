@@ -84,6 +84,15 @@ resource "aws_security_group" "Docker_Swarm" {
   }
 
   ingress {
+    from_port   = 7946    # This port is used for communication between nodes for discovery.
+    to_port     = 7946
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+
+  ingress {
     from_port   = 4789    # If you are using overlay networks, this port is used for overlay network traffic.
     to_port     = 4789
     protocol    = "udp"
