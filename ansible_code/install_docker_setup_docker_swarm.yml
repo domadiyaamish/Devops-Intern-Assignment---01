@@ -55,6 +55,10 @@
         var: swarm_init_result
       when: swarm_init_result.rc == 0
 
+    - name: Set global variable with Swarm Manager token
+      set_fact:
+        swarm_manager_token: "{{ swarm_init_result.stdout_lines[4] }}"
+
     - name: Store Docker Swarm Token locally on the manager
       local_action:
         module: copy
@@ -68,11 +72,6 @@
         cmd: "chmod 777 ./swarm_token.txt"
       when: swarm_init_result.rc == 0
 
-    - name: Fetch Swarm Token from the manager to Ansible controller
-      fetch:
-        src: ./swarm_token.txt
-        dest: ./swarm_token.txt
-        flat: yes
 
 - name: Join Docker Swarm as a Worker
   hosts: swarm_workers
