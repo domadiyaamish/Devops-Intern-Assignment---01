@@ -116,10 +116,26 @@ locals {
   ]
 }
 
+data "aws_ami" "latest_ubuntu" {
+  most_recent = true
+
+  owners = ["679593333241"]  # Canonical owner ID for Ubuntu AMIs
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
 # Create EC2 Instances
 resource "aws_instance" "ec2_instances" {
   count         = length(local.ec2_instances)
-  ami           = "ami-0287a05f0ef0e9d9a"
+  ami           = data.aws_ami.latest_ubuntu.id
   instance_type = "t2.micro"
   key_name      = "poojali"
   associate_public_ip_address = local.ec2_instances[count.index]["associate_public_ip_address"]
