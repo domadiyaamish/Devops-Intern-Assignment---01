@@ -6,7 +6,6 @@ provider "aws" {
 
 # Default security group
 resource "aws_security_group" "my_security_group" {
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -65,7 +64,6 @@ resource "aws_security_group" "jenkins_cicd" {
 }
 
 # Docker Swarm Security Group
-
 resource "aws_security_group" "Docker_Swarm" {
   ingress {
     from_port   = 2377    # This is the main port for communication between Docker Swarm managers.
@@ -84,15 +82,6 @@ resource "aws_security_group" "Docker_Swarm" {
   }
 
   ingress {
-    from_port   = 7946    # This port is used for communication between nodes for discovery.
-    to_port     = 7946
-    protocol    = "udp"
-    cidr_blocks = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }
-
-
-  ingress {
     from_port   = 4789    # If you are using overlay networks, this port is used for overlay network traffic.
     to_port     = 4789
     protocol    = "udp"
@@ -101,56 +90,42 @@ resource "aws_security_group" "Docker_Swarm" {
   }
 }
 
+# EC2 Instances Configuration
+locals {
+  ec2_instances = [
+    {
+      name                        = "jenkins-CICD"
+      security_group_ids          = [aws_security_group.my_security_group.id, aws_security_group.jenkins_cicd.id]
+      associate_public_ip_address = true
+    },
+    {
+      name                        = "docker-manager"
+      security_group_ids          = [aws_security_group.my_security_group.id, aws_security_group.Docker_Swarm.id]
+      associate_public_ip_address = true
+    },
+    {
+      name                        = "docker-worker-1"
+      security_group_ids          = [aws_security_group.my_security_group.id, aws_security_group.Docker_Swarm.id]
+      associate_public_ip_address = true
+    },
+    {
+      name                        = "docker-worker-2"
+      security_group_ids          = [aws_security_group.my_security_group.id, aws_security_group.Docker_Swarm.id]
+      associate_public_ip_address = true
+    },
+  ]
+}
 
 # Create EC2 Instances
-resource "aws_instance" "docker_manager" {
+resource "aws_instance" "ec2_instances" {
+  count         = length(local.ec2_instances)
   ami           = "ami-0287a05f0ef0e9d9a"
   instance_type = "t2.micro"
-  key_name      = "poojali"  
-  associate_public_ip_address = true
-  vpc_security_group_ids = [aws_security_group.my_security_group.id,aws_security_group.jenkins_cicd.id]
-
-
-  tags = {
-    Name = "jenkins-CICD"
-  }
-}
-
-
-resource "aws_instance" "docker-manager" {
-  ami           = "ami-0287a05f0ef0e9d9a"
-  instance_type = "t2.micro"
-  key_name      = "poojali" 
-  associate_public_ip_address = true
-  vpc_security_group_ids = [aws_security_group.my_security_group.id,aws_security_group.Docker_Swarm.id]
-
+  key_name      = "poojali"
+  associate_public_ip_address = local.ec2_instances[count.index]["associate_public_ip_address"]
+  vpc_security_group_ids      = local.ec2_instances[count.index]["security_group_ids"]
 
   tags = {
-    Name = "docker-manager"
-  }
-}
-
-resource "aws_instance" "docker_worker_1" {
-  ami           = "ami-0287a05f0ef0e9d9a"
-  instance_type = "t2.micro"
-  key_name      = "poojali" 
-  associate_public_ip_address = true
-  vpc_security_group_ids = [aws_security_group.my_security_group.id,aws_security_group.Docker_Swarm.id]
-
-
-  tags = {
-    Name = "docker-worker-1"
-  }
-}
-
-resource "aws_instance" "docker_worker_2" {
-  ami           = "ami-0287a05f0ef0e9d9a"
-  instance_type = "t2.micro"
-  key_name      = "poojali"  
-  associate_public_ip_address = true
-  vpc_security_group_ids = [aws_security_group.my_security_group.id,aws_security_group.Docker_Swarm.id]
-
-  tags = {
-    Name = "docker-worker-2"
+    Name = local.ec2_instances[count.index]["name"]
   }
 }
